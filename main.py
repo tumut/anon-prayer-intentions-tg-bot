@@ -174,11 +174,8 @@ async def handle_confirmation_buttons(
         await context.bot.send_message(chat_id=outbox_chat_id, text=intention)
         context.user_data.pop("pending_intention", None)
 
-        await query.edit_message_text("✅ Intenção enviada!")
-
-        await context.bot.send_message(
-            chat_id=query.message.chat.id,
-            text=f"📨 Sua intenção foi enviada, agora é só aguardar.\n\n<pre>{intention}</pre>",
+        await query.edit_message_text(
+            f"<pre>{intention}</pre>\n\n—\n\n📨 Essa intenção foi enviada, agora é só aguardar.",
             reply_markup=NEW_INTENTION_KEYBOARD,
             parse_mode="HTML",
         )
@@ -186,7 +183,11 @@ async def handle_confirmation_buttons(
         return
 
     if data == "cancel_send":
-        await query.edit_message_text("❌ Intenção cancelada.")
+        await query.edit_message_text(
+            f"<pre>{intention}</pre>\n\n—\n\n❌ Essa intenção foi cancelada.",
+            reply_markup=NEW_INTENTION_KEYBOARD,
+            parse_mode="HTML",
+        )
         context.user_data.pop("pending_intention", None)
         return
 
