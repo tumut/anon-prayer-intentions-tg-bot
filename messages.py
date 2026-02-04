@@ -54,3 +54,7 @@ READY_MESSAGE = (
 READY_KEYBOARD = InlineKeyboardMarkup(
     [[InlineKeyboardButton("📖 Instruções & Regras", callback_data="instructions")]]
 )
+
+NEW_INTENTION_KEYBOARD = InlineKeyboardMarkup(
+    [[InlineKeyboardButton("✍️ Nova intenção", callback_data="new_intention")]]
+)

@@ -14,7 +14,12 @@ from telegram.ext import (
     filters,
 )
 
-from messages import INTRO_MESSAGES, READY_KEYBOARD, READY_MESSAGE
+from messages import (
+    INTRO_MESSAGES,
+    NEW_INTENTION_KEYBOARD,
+    READY_KEYBOARD,
+    READY_MESSAGE,
+)
 from regexes import parse_anon_intention, parse_named_intention
 from state import BotState
 
@@ -101,15 +106,7 @@ async def handle_private_message(update: Update, context: ContextTypes.DEFAULT_T
     if pending_intention is not None:
         await message.reply_text(
             "Confirme ou cancele sua última intenção antes de escrever uma nova. Ou então, selecione o botão abaixo.",
-            reply_markup=InlineKeyboardMarkup(
-                [
-                    [
-                        InlineKeyboardButton(
-                            "✍️ Nova intenção", callback_data="new_intention"
-                        )
-                    ]
-                ]
-            ),
+            reply_markup=NEW_INTENTION_KEYBOARD,
         )
         return
 
@@ -182,15 +179,7 @@ async def handle_confirmation_buttons(
         await context.bot.send_message(
             chat_id=query.message.chat.id,
             text=f"📨 Sua intenção foi enviada, agora é só aguardar.\n\n<pre>{intention}</pre>",
-            reply_markup=InlineKeyboardMarkup(
-                [
-                    [
-                        InlineKeyboardButton(
-                            "✍️ Nova intenção", callback_data="new_intention"
-                        )
-                    ]
-                ]
-            ),
+            reply_markup=NEW_INTENTION_KEYBOARD,
             parse_mode="HTML",
         )
 
