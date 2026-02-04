@@ -1,14 +1,31 @@
+import hashlib
+import time
 from typing import Optional
+import uuid
 
 import redis
 
 
 class BotState:
     OUTBOX_KEY = "bot:outbox_chat_id"
-    BANNED_USERS_KEY = "bot:banned_users"
+    USER_TO_BAN_KEY = "bot:ban:user:{}"
+    BAN_TO_USER_KEY = "bot:ban:token:{}"
+    #   user_token : <hashed user id>
+    #   reason     : <text>
+    #   intention  : <text>
+    #   admin_id   : <telegram user id>
+    #   timestamp  : <unix timestamp>
 
     def __init__(self, redis_client: redis.Redis):
         self._r = redis_client
+
+    # --- Helpers ---
+
+    def _hash_user_id(self, user_id: int) -> str:
+        return hashlib.sha256(str(user_id).encode()).hexdigest()
+
+    def _generate_ban_token(self) -> str:
+        return uuid.uuid4().hex
 
     # --- Outbox chat ----
 
@@ -26,11 +43,56 @@ class BotState:
 
     # --- Banned users ---
 
-    def is_user_banned(self, user_hash: str) -> bool:
-        return self._r.sismember(self.BANNED_USERS_KEY, user_hash)
+    def is_user_banned(self, user_id: int) -> bool:
+        user_token = self._hash_user_id(user_id)
+        key = self.USER_TO_BAN_KEY.format(user_token)
+        return self._r.exists(key) == 1
 
-    def ban_user(self, user_hash: str) -> None:
-        self._r.sadd(self.BANNED_USERS_KEY, user_hash)
+    def get_ban_token_by_user(self, user_id: int) -> Optional[str]:
+        user_token = self._hash_user_id(user_id)
+        key = self.USER_TO_BAN_KEY.format(user_token)
+        return self._r.get(key)
 
-    def unban_user(self, user_hash: str) -> None:
-        self._r.srem(self.BANNED_USERS_KEY, user_hash)
+    def ban_user(
+        self, user_id: int, reason: str, intention: str, admin_id: int
+    ) -> tuple[str, str]:
+        user_token = self._hash_user_id(user_id)
+
+        existing = self.get_ban_token_by_user(user_id)
+        if existing:
+            return user_token, existing
+
+        ban_token = self._generate_ban_token()
+
+        user_key = self.USER_TO_BAN_KEY.format(user_token)
+        ban_key = self.BAN_TO_USER_KEY.format(ban_token)
+
+        pipe = self._r.pipeline()
+        pipe.set(user_key, ban_token)
+        pipe.hset(
+            ban_key,
+            mapping={
+                "user_token": user_token,
+                "reason": reason,
+                "intention": intention,
+                "admin_id": admin_id,
+                "timestamp": time.time(),
+            },
+        )
+        pipe.execute()
+
+        return user_token, ban_token
+
+    def unban_user(self, ban_token: str) -> None:
+        ban_key = self.BAN_TO_USER_KEY.format(ban_token)
+        ban_metadata = self._r.hgetall(ban_key)
+
+        if not ban_metadata:
+            return
+
+        user_key = self.USER_TO_BAN_KEY.format(ban_metadata["user_token"])
+
+        pipe = self._r.pipeline()
+        pipe.delete(ban_key)
+        pipe.delete(user_key)
+        pipe.execute()
