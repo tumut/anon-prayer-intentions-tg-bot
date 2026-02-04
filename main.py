@@ -15,6 +15,7 @@ from telegram.ext import (
 )
 
 from messages import (
+    ADMIN_ACTIONS_MESSAGE,
     INTRO_MESSAGES,
     NEW_INTENTION_KEYBOARD,
     READY_KEYBOARD,
@@ -172,7 +173,26 @@ async def handle_confirmation_buttons(
             )
             return
 
-        await context.bot.send_message(chat_id=outbox_chat_id, text=intention)
+        admin_keyboard = InlineKeyboardMarkup(
+            [
+                [
+                    InlineKeyboardButton(
+                        "✅ Aceitar",
+                        callback_data=f"admin_accept:{query.message.chat.id}",
+                    ),
+                ],
+                [
+                    InlineKeyboardButton(
+                        "ℹ️ Mais opções",
+                        callback_data="admin_actions",
+                    ),
+                ],
+            ]
+        )
+
+        await context.bot.send_message(
+            chat_id=outbox_chat_id, text=intention, reply_markup=admin_keyboard
+        )
         context.user_data.pop("pending_intention", None)
 
         await query.edit_message_text(
@@ -214,6 +234,171 @@ async def handle_new_intention_button(
     )
 
 
+async def handle_admin_buttons(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    if (
+        query is None
+        or query.data is None
+        or query.from_user is None
+        or not isinstance(query.message, Message)
+    ):
+        return
+
+    await query.answer()
+
+    if not query.data.startswith("admin_"):
+        return
+
+    if query.data == "admin_actions":
+        await context.bot.send_message(
+            query.message.chat_id, text=ADMIN_ACTIONS_MESSAGE, parse_mode="HTML"
+        )
+        return
+
+    action, user_id_str = query.data.split(":", 1)
+    intention = query.message.text
+
+    try:
+        user_id = int(user_id_str)
+    except ValueError:
+        await query.edit_message_text(
+            f"{intention}\n\n—\n\n⚠️ Erro interno (ID inválido)."
+        )
+        return
+
+    if action == "admin_accept":
+        await context.bot.send_message(
+            chat_id=user_id,
+            text=f"<pre>{intention}</pre>\n\n✅ A intenção acima foi aceita, confira se ela apareceu no canal.",
+            reply_markup=NEW_INTENTION_KEYBOARD,
+            parse_mode="HTML",
+        )
+
+        await query.edit_message_text(
+            f"{intention}\n\n—\n\n✅ Intenção aceita por {query.from_user.first_name}."
+        )
+
+
+def retrieve_intention_sender_id(intention_msg: Message) -> int | None:
+    if intention_msg.reply_markup is not None:
+        for row in intention_msg.reply_markup.inline_keyboard:
+            for button in row:
+                if isinstance(button.callback_data, str):
+                    return int(button.callback_data.split(":", 1)[1])
+                break
+            break
+
+    return None
+
+
+async def reject(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if update.message is None:
+        return
+
+    if update.message.from_user is None:
+        return
+
+    if not context.args:
+        await update.message.reply_text("Você precisa fornecer um motivo.")
+        return
+
+    if update.message.reply_to_message is None:
+        await update.message.reply_text(
+            "Você deve responder à mensagem com a intenção."
+        )
+        return
+
+    intention_msg = update.message.reply_to_message
+    intention_sender_id = retrieve_intention_sender_id(intention_msg)
+
+    if intention_sender_id is None or intention_msg.text is None:
+        await update.message.reply_text(
+            "Não posso fazer nada com a mensagem que você respondeu."
+        )
+        return
+
+    intention = intention_msg.text
+    reason = " ".join(context.args)
+    admin_name = update.message.from_user.first_name
+
+    await intention_msg.edit_text(
+        f"{intention}\n\n—\n\n❌ Intenção rejeitada por {admin_name}. Motivo:\n\n{reason}"
+    )
+
+    await context.bot.send_message(
+        chat_id=intention_sender_id,
+        text=f"<pre>{intention}</pre>\n\n❌ A intenção acima foi rejeitada.\n\nMotivo: {reason}",
+        parse_mode="HTML",
+    )
+
+    await update.message.reply_text(
+        "A intenção foi ❌rejeitada e o remetente dela foi notificado com o motivo fornecido."
+    )
+
+
+async def ban(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if update.message is None:
+        return
+
+    if update.message.from_user is None:
+        return
+
+    if not context.args:
+        await update.message.reply_text("Você precisa fornecer um motivo.")
+        return
+
+    if update.message.reply_to_message is None:
+        await update.message.reply_text(
+            "Você deve responder à mensagem com a intenção."
+        )
+        return
+
+    intention_msg = update.message.reply_to_message
+    intention_sender_id = retrieve_intention_sender_id(intention_msg)
+
+    if intention_sender_id is None or intention_msg.text is None:
+        await update.message.reply_text(
+            "Não posso fazer nada com a mensagem que você respondeu."
+        )
+        return
+
+    intention = intention_msg.text
+    reason = " ".join(context.args)
+    admin_id = update.message.from_user.id
+    admin_name = update.message.from_user.first_name
+
+    _, ban_token = state.ban_user(intention_sender_id, reason, intention, admin_id)
+
+    await intention_msg.edit_text(
+        f"{intention}\n\n—\n\n🔨 O remetente desta intenção foi banido por {admin_name}. Motivo: {reason}\n\n<code>{ban_token}</code>\n\n",
+        parse_mode="HTML",
+    )
+
+    ban_message = (
+        f"<pre>{intention}</pre>\n\n"
+        "🔨 Você foi banido por causa da intenção acima.\n\n"
+        f"Motivo: {reason}\n\n"
+        "Se quiser contestar esse banimento, fale com algum admin pessoalmente. "
+        "Encaminhe para o admin esta mensagem, ele precisará do código abaixo para te desbanir.\n\n"
+        f"<code>{ban_token}</code>"
+    )
+
+    await context.bot.send_message(
+        chat_id=intention_sender_id,
+        text=ban_message,
+        parse_mode="HTML",
+    )
+
+    await update.message.reply_text(
+        (
+            "O remetente da intenção foi 🔨banido e ele foi notificado com o motivo fornecido. "
+            "Para desbani-lo, use o token abaixo e o comando /unban.\n\n"
+            f"<code>{ban_token}</code>"
+        ),
+        parse_mode="HTML",
+    )
+
+
 async def on_added_to_group(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if update.my_chat_member is None:
         return
@@ -225,12 +410,18 @@ async def on_added_to_group(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
 
 
-async def handle_password_reply(update: Update, context: ContextTypes.DEFAULT_TYPE):
+async def handle_group_messages(update: Update, context: ContextTypes.DEFAULT_TYPE):
     global outbox_chat_id
 
     message = update.message
-    if message is None or message.chat.type not in ("group", "supergroup"):
+    if (
+        message is None
+        or message.text is None
+        or message.chat.type not in ("group", "supergroup")
+    ):
         return
+
+    # We only want to deal with replies to the bot
 
     if message.reply_to_message is None:
         return
@@ -247,27 +438,31 @@ async def handle_password_reply(update: Update, context: ContextTypes.DEFAULT_TY
     chat_id = message.chat.id
     outbox_chat_id = state.get_outbox_chat_id()
 
-    if outbox_chat_id == chat_id:
-        return
+    if outbox_chat_id != chat_id:
+        # This comes NOT from the group we're active in, so we only care about
+        # the activation password.
+        if message.text != ACTIVATION_PASSWORD:
+            await message.reply_text("Senha incorreta.")
+            return
 
-    if message.text != ACTIVATION_PASSWORD:
-        await message.reply_text("Senha incorreta.")
-        return
+        if outbox_chat_id is not None:
+            await context.bot.send_message(
+                chat_id=outbox_chat_id,
+                text="Fui desvinculado deste grupo. Envie a senha novamente para me ativar aqui.",
+            )
 
-    if outbox_chat_id is not None:
-        await context.bot.send_message(
-            chat_id=outbox_chat_id,
-            text="Fui desvinculado deste grupo. Envie a senha novamente para me ativar aqui.",
-        )
-
-    state.set_outbox_chat_id(chat_id)
-    await message.reply_text("Ativado. Vou encaminhar as intenções pra cá.")
+        state.set_outbox_chat_id(chat_id)
+        await message.reply_text("Ativado. Vou encaminhar as intenções pra cá.")
 
 
 def main():
     application = ApplicationBuilder().token(BOT_TOKEN).build()
 
     application.add_handler(CommandHandler("start", start))
+
+    application.add_handler(CommandHandler("reject", reject))
+
+    application.add_handler(CommandHandler("ban", ban))
 
     application.add_handler(
         CallbackQueryHandler(show_instructions, pattern="^instructions$")
@@ -278,7 +473,7 @@ def main():
     )
 
     application.add_handler(
-        MessageHandler(filters.TEXT & filters.ChatType.GROUPS, handle_password_reply)
+        MessageHandler(filters.TEXT & filters.ChatType.GROUPS, handle_group_messages)
     )
 
     application.add_handler(
@@ -289,6 +484,10 @@ def main():
         CallbackQueryHandler(
             handle_confirmation_buttons, pattern="^(confirm|cancel)_send$"
         )
+    )
+
+    application.add_handler(
+        CallbackQueryHandler(handle_admin_buttons, pattern="^admin_")
     )
 
     application.add_handler(

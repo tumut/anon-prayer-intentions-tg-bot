@@ -51,6 +51,12 @@ READY_MESSAGE = (
     "<pre>Nome: \n\nIntenção: </pre>"
 )
 
+ADMIN_ACTIONS_MESSAGE = (
+    "Para outras ações além de aprovar, responda à mensagem da intenção com um dos seguintes comandos:\n\n"
+    "/reject <code>motivo</code>\n"
+    "/ban <code>motivo</code>\n"
+)
+
 READY_KEYBOARD = InlineKeyboardMarkup(
     [[InlineKeyboardButton("📖 Instruções & Regras", callback_data="instructions")]]
 )
