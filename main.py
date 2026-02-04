@@ -1,5 +1,5 @@
 import os
-from typing import Callable, Optional, TypeVar
+from typing import Callable, TypeVar
 
 import redis
 from dotenv import load_dotenv
