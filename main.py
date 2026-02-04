@@ -167,7 +167,8 @@ async def handle_confirmation_buttons(
         outbox_chat_id = state.get_outbox_chat_id()
         if outbox_chat_id is None:
             await context.bot.send_message(
-                query.message.chat.id, "💀 Desculpe, no momento não estou ativado."
+                query.message.chat.id,
+                "💀 Desculpe, no momento não estou ativado. Reclame com os admins!",
             )
             return
 
