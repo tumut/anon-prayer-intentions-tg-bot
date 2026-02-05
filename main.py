@@ -372,8 +372,10 @@ async def handle_admin_buttons(update: Update, context: ContextTypes.DEFAULT_TYP
             parse_mode="HTML",
         )
 
-        await query.edit_message_text(
-            f"{intention}\n\n—\n\n✅ Intenção aceita por {query.from_user.first_name}."
+        await query.edit_message_reply_markup(None)
+        await query.message.reply_text(
+            f"✅ Intenção aceita por {query.from_user.first_name}.\n\n"
+            "(Vocês precisarão copiar e colar as intenções enquanto o bot ainda não for vinculado ao canal.)"
         )
 
 
