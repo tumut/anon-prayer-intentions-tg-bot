@@ -488,9 +488,13 @@ async def on_added_to_group(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     new_status = update.my_chat_member.new_chat_member.status
     if new_status in ("member", "administrator"):
-        await context.bot.send_message(
-            chat_id=update.my_chat_member.chat.id, text="Qual é a senha?"
-        )
+        group_id = update.my_chat_member.chat.id
+        if group_id == state.get_outbox_chat_id():
+            await context.bot.send_message(
+                chat_id=group_id, text="Opa, estou de volta."
+            )
+        else:
+            await context.bot.send_message(chat_id=group_id, text="Qual é a senha?")
 
 
 async def handle_group_messages(update: Update, context: ContextTypes.DEFAULT_TYPE):
