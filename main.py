@@ -1,5 +1,5 @@
 import os
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Callable, TypeVar
 
 import redis
@@ -535,7 +535,9 @@ async def unban(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 
 def format_timestamp(timestamp: float) -> str:
-    return datetime.fromtimestamp(timestamp).strftime("%Y-%m-%dT%H:%M:%SZ")
+    return datetime.fromtimestamp(timestamp, tz=timezone.utc).strftime(
+        "%Y-%m-%dT%H:%M:%SZ"
+    )
 
 
 async def baninfo(update: Update, context: ContextTypes.DEFAULT_TYPE):
