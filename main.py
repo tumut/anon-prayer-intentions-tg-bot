@@ -70,6 +70,11 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     )
 
 
+async def ping(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    assert update.effective_chat is not None
+    await context.bot.send_message(update.effective_chat.id, "Pong.")
+
+
 async def show_instructions(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     if query is None:
@@ -698,6 +703,9 @@ def main():
 
     # No guards
     application.add_handler(CommandHandler("start", start))
+
+    # No guards
+    application.add_handler(CommandHandler("ping", ping))
 
     # Guard against: inactive group
     application.add_handler(CommandHandler("reject", reject))
