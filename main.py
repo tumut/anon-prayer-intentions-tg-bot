@@ -17,9 +17,9 @@ from telegram.ext import (
 
 from messages import (
     ADMIN_ACTIONS_MESSAGE,
+    INSTRUCTIONS_KEYBOARD,
     INTRO_MESSAGES,
     NEW_INTENTION_KEYBOARD,
-    READY_KEYBOARD,
     READY_MESSAGE,
 )
 from regexes import parse_anon_intention, parse_named_intention
@@ -68,7 +68,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         chat_id=chat.id,
         text=READY_MESSAGE,
         parse_mode="HTML",
-        reply_markup=READY_KEYBOARD,
+        reply_markup=INSTRUCTIONS_KEYBOARD,
     )
 
 
@@ -271,7 +271,7 @@ async def handle_new_intention_button(
         chat_id=query.message.chat.id,
         text=READY_MESSAGE,
         parse_mode="HTML",
-        reply_markup=READY_KEYBOARD,
+        reply_markup=INSTRUCTIONS_KEYBOARD,
     )
 
 

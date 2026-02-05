@@ -57,7 +57,7 @@ ADMIN_ACTIONS_MESSAGE = (
     "/ban <code>motivo</code>\n"
 )
 
-READY_KEYBOARD = InlineKeyboardMarkup(
+INSTRUCTIONS_KEYBOARD = InlineKeyboardMarkup(
     [[InlineKeyboardButton("📖 Instruções & Regras", callback_data="instructions")]]
 )
 
