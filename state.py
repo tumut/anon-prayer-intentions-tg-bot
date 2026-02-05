@@ -53,6 +53,10 @@ class BotState:
         key = self.USER_TO_BAN_KEY.format(user_token)
         return self._r.get(key)
 
+    def get_ban_info_by_ban_token(self, ban_token: str) -> Optional[dict]:
+        ban_key = self.BAN_TO_USER_KEY.format(ban_token)
+        return self._r.hgetall(ban_key)
+
     def ban_user(
         self, user_id: int, reason: str, intention: str, admin_id: int
     ) -> tuple[str, str]:
