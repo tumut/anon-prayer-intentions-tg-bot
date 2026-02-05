@@ -458,38 +458,48 @@ async def handle_group_messages(update: Update, context: ContextTypes.DEFAULT_TY
 def main():
     application = ApplicationBuilder().token(BOT_TOKEN).build()
 
+    # No guards
     application.add_handler(CommandHandler("start", start))
 
+    # Guard against: inactive group
     application.add_handler(CommandHandler("reject", reject))
 
+    # Guard against: inactive group
     application.add_handler(CommandHandler("ban", ban))
 
+    # No guards
     application.add_handler(
         CallbackQueryHandler(show_instructions, pattern="^instructions$")
     )
 
+    # No guards
     application.add_handler(
         ChatMemberHandler(on_added_to_group, ChatMemberHandler.MY_CHAT_MEMBER)
     )
 
+    # Guard against: inactive group (done manually)
     application.add_handler(
         MessageHandler(filters.TEXT & filters.ChatType.GROUPS, handle_group_messages)
     )
 
+    # Guard against: banned users
     application.add_handler(
         MessageHandler(filters.TEXT & filters.ChatType.PRIVATE, handle_private_message)
     )
 
+    # Guard against: banned users
     application.add_handler(
         CallbackQueryHandler(
             handle_confirmation_buttons, pattern="^(confirm|cancel)_send$"
         )
     )
 
+    # Guard against: inactive group
     application.add_handler(
         CallbackQueryHandler(handle_admin_buttons, pattern="^admin_")
     )
 
+    # Guard against: banned users
     application.add_handler(
         CallbackQueryHandler(handle_new_intention_button, pattern="^new_intention$")
     )
