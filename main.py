@@ -3,7 +3,7 @@ from typing import Callable, TypeVar
 
 import redis
 from dotenv import load_dotenv
-from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Message, Update
+from telegram import Chat, InlineKeyboardButton, InlineKeyboardMarkup, Message, Update
 from telegram.ext import (
     ApplicationBuilder,
     CallbackQueryHandler,
@@ -234,6 +234,36 @@ async def handle_new_intention_button(
     )
 
 
+async def is_inactive_group_and_notify(
+    update: Update, context: ContextTypes.DEFAULT_TYPE
+):
+    if update.effective_chat is None:
+        # Silent failure; I expect this to never happen
+        return True
+
+    if update.effective_chat.type not in (Chat.GROUP, Chat.SUPERGROUP):
+        # Normally should only end up here in case a user is trying to use admin
+        # commands in private messaging; silent failure, don't acknowledge
+        return True
+
+    chat_id = update.effective_chat.id
+    outbox_chat_id = state.get_outbox_chat_id()
+
+    if outbox_chat_id == chat_id:
+        return False
+
+    text = "Não estou ativo nesse grupo. Cadê a senha?"
+
+    if update.effective_message is None:
+        await context.bot.send_message(chat_id, text)
+    else:
+        await context.bot.send_message(
+            chat_id, text, reply_to_message_id=update.effective_message.message_id
+        )
+
+    return True
+
+
 async def handle_admin_buttons(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     if (
@@ -245,6 +275,9 @@ async def handle_admin_buttons(update: Update, context: ContextTypes.DEFAULT_TYP
         return
 
     await query.answer()
+
+    if await is_inactive_group_and_notify(update, context):
+        return
 
     if not query.data.startswith("admin_"):
         return
@@ -292,6 +325,9 @@ def retrieve_intention_sender_id(intention_msg: Message) -> int | None:
 
 
 async def reject(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if await is_inactive_group_and_notify(update, context):
+        return
+
     if update.message is None:
         return
 
@@ -337,6 +373,9 @@ async def reject(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 
 async def ban(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if await is_inactive_group_and_notify(update, context):
+        return
+
     if update.message is None:
         return
 
