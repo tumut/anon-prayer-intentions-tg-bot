@@ -86,7 +86,42 @@ async def show_instructions(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await context.bot.send_message(chat_id=chat.id, text=text, parse_mode="HTML")
 
 
+async def is_banned_and_notify(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if update.effective_user is None:
+        # Silent failure; I expect this to never happen
+        return True
+
+    user_id = update.effective_user.id
+    ban_token = state.get_ban_token_by_user(user_id)
+
+    if ban_token is None:
+        return False
+
+    notification = (
+        "Você está banido e não pode usar o bot. Fale com um admin e mostre o código abaixo.\n\n"
+        f"<code>{ban_token}</code>\n\n"
+        "Para mais informações use o comando: /baninfo"
+    )
+
+    if update.effective_message is None:
+        await context.bot.send_message(
+            chat_id=user_id, text=notification, parse_mode="HTML"
+        )
+    else:
+        await context.bot.send_message(
+            chat_id=user_id,
+            text=notification,
+            parse_mode="HTML",
+            reply_to_message_id=update.effective_message.id,
+        )
+
+    return True
+
+
 async def handle_private_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if await is_banned_and_notify(update, context):
+        return
+
     if context.user_data is None:
         return
 
@@ -154,6 +189,9 @@ async def handle_confirmation_buttons(
         return
 
     await query.answer()
+
+    if await is_banned_and_notify(update, context):
+        return
 
     data = query.data
     intention = context.user_data.get("pending_intention")
@@ -224,6 +262,9 @@ async def handle_new_intention_button(
         return
 
     await query.answer()
+
+    if await is_banned_and_notify(update, context):
+        return
 
     context.user_data.pop("pending_intention", None)
     await context.bot.send_message(
