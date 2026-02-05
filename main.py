@@ -174,7 +174,10 @@ async def handle_private_message(update: Update, context: ContextTypes.DEFAULT_T
     )
 
     await message.reply_text(
-        confirmation_text, reply_markup=keyboard, parse_mode="HTML"
+        confirmation_text,
+        reply_markup=keyboard,
+        parse_mode="HTML",
+        reply_to_message_id=message.id,
     )
 
 
@@ -243,7 +246,7 @@ async def handle_confirmation_buttons(
 
     if data == "cancel_send":
         await query.edit_message_text(
-            f"<pre>{intention}</pre>\n\n—\n\n❌ Essa intenção foi cancelada.",
+            f"❌ Essa intenção foi cancelada.",
             reply_markup=NEW_INTENTION_KEYBOARD,
             parse_mode="HTML",
         )
