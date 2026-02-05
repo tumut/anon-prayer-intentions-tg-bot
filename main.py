@@ -630,7 +630,11 @@ async def on_added_to_group(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
 
     new_status = update.my_chat_member.new_chat_member.status
-    if new_status in ("member", "administrator"):
+    if (
+        new_status in ("member", "administrator")
+        and update.effective_chat is not None
+        and update.effective_chat.type in (Chat.GROUP, Chat.SUPERGROUP)
+    ):
         group_id = update.my_chat_member.chat.id
         if group_id == state.get_outbox_chat_id():
             await context.bot.send_message(
