@@ -29,6 +29,8 @@ RULES_AND_INSTRUCTIONS_MESSAGES: list[str] = [
         "1. Envie <b>apenas texto</b>. O bot não aceita imagens, áudios ou qualquer outro tipo de mídia.\n\n"
         "2. <b>Nunca coloque nomes completos</b>, a não ser que se trate de um famoso "
         "(nesse caso, especifique quem é a pessoa).\n\n"
+        '❌: "Pela alma de Fulano da Silva"\n'
+        '✔️: "Pela alma do dublador Fulano da Silva"\n\n'
         "3. Admins têm liberdade total de omitir detalhes da sua intenção se isso for necessário "
         "para resguardar a identidade das pessoas.\n\n"
         "4. Admins são livres para arbitrariamente rejeitar intenções, e poderão te avisar "
