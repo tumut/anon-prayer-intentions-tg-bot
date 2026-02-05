@@ -423,7 +423,7 @@ async def reject(update: Update, context: ContextTypes.DEFAULT_TYPE):
     admin_name = update.message.from_user.first_name
 
     await intention_msg.edit_text(
-        f"{intention}\n\n—\n\n❌ Intenção rejeitada por {admin_name}. Motivo:\n\n{reason}"
+        f"{intention}\n\n—\n\n❌ Intenção rejeitada por {admin_name}. Motivo: {reason}"
     )
 
     await context.bot.send_message(
