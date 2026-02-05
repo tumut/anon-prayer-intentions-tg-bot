@@ -17,10 +17,11 @@ from telegram.ext import (
 
 from messages import (
     ADMIN_ACTIONS_MESSAGE,
-    INSTRUCTIONS_KEYBOARD,
-    INTRO_MESSAGES,
+    INTRO_MESSAGE,
     NEW_INTENTION_KEYBOARD,
     READY_MESSAGE,
+    RULES_AND_INSTRUCTIONS_MESSAGES,
+    get_instructions_keyboard,
 )
 from regexes import parse_anon_intention, parse_named_intention
 from state import BotState
@@ -61,14 +62,11 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if chat is None or chat.type != "private":
         return
 
-    for text in INTRO_MESSAGES:
-        await context.bot.send_message(chat_id=chat.id, text=text, parse_mode="HTML")
-
     await context.bot.send_message(
         chat_id=chat.id,
-        text=READY_MESSAGE,
+        text=INTRO_MESSAGE,
         parse_mode="HTML",
-        reply_markup=INSTRUCTIONS_KEYBOARD,
+        reply_markup=get_instructions_keyboard(newbie=True),
     )
 
 
@@ -83,8 +81,34 @@ async def show_instructions(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if chat is None or chat.type != "private":
         return
 
-    for text in INTRO_MESSAGES:
-        await context.bot.send_message(chat_id=chat.id, text=text, parse_mode="HTML")
+    first_message_id = None
+
+    for text in RULES_AND_INSTRUCTIONS_MESSAGES:
+        m = await context.bot.send_message(
+            chat_id=chat.id, text=text, parse_mode="HTML"
+        )
+        if first_message_id is None:
+            first_message_id = m.id
+
+    data = query.data
+    assert data is not None
+    is_newbie = ":newbie" in data
+
+    text = None
+
+    if is_newbie:
+        text = (
+            "☝️ Leia tudo a partir daqui. Quando terminar, é só apertar no botão abaixo."
+        )
+    else:
+        text = "☝️ Leia a partir daqui."
+
+    await context.bot.send_message(
+        chat_id=chat.id,
+        text=text,
+        reply_markup=NEW_INTENTION_KEYBOARD,
+        reply_to_message_id=first_message_id,
+    )
 
 
 async def is_banned_and_notify(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -271,7 +295,7 @@ async def handle_new_intention_button(
         chat_id=query.message.chat.id,
         text=READY_MESSAGE,
         parse_mode="HTML",
-        reply_markup=INSTRUCTIONS_KEYBOARD,
+        reply_markup=get_instructions_keyboard(),
     )
 
 
@@ -682,7 +706,7 @@ def main():
 
     # No guards
     application.add_handler(
-        CallbackQueryHandler(show_instructions, pattern="^instructions$")
+        CallbackQueryHandler(show_instructions, pattern="^instructions")
     )
 
     # No guards

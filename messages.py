@@ -1,12 +1,13 @@
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup
 
-INTRO_MESSAGES: list[str] = [
-    (
-        "A paz de Cristo! Sou o bot de intenções anônimas do canal. "
-        "Meu trabalho é encaminhar suas intenções anonimamente aos admins, "
-        "para que eles as avaliem e postem no canal.\n\n"
-        "<b>Por favor, leia atentamente as instruções abaixo.</b>"
-    ),
+INTRO_MESSAGE = (
+    "A paz de Cristo! Sou o bot de intenções anônimas do canal. "
+    "Meu trabalho é encaminhar suas intenções anonimamente aos admins, "
+    "para que eles as avaliem e as postem no canal.\n\n"
+    "<b>⚠️ Antes de usar, clique no botão abaixo e leia atentamente as instruções.</b>"
+)
+
+RULES_AND_INSTRUCTIONS_MESSAGES: list[str] = [
     (
         "<b>INSTRUÇÕES DE USO DO BOT</b>\n\n"
         "1. Apenas envie uma mensagem qualquer aqui na sua conversa privada "
@@ -57,10 +58,19 @@ ADMIN_ACTIONS_MESSAGE = (
     "/ban <code>motivo</code>\n"
 )
 
-INSTRUCTIONS_KEYBOARD = InlineKeyboardMarkup(
-    [[InlineKeyboardButton("📖 Instruções & Regras", callback_data="instructions")]]
-)
-
 NEW_INTENTION_KEYBOARD = InlineKeyboardMarkup(
     [[InlineKeyboardButton("✍️ Nova intenção", callback_data="new_intention")]]
 )
+
+
+def get_instructions_keyboard(newbie: bool = False):
+    param = ":newbie" if newbie else ""
+    return InlineKeyboardMarkup(
+        [
+            [
+                InlineKeyboardButton(
+                    "📖 Instruções & Regras", callback_data=f"instructions{param}"
+                )
+            ]
+        ]
+    )
