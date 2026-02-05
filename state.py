@@ -87,12 +87,12 @@ class BotState:
 
         return user_token, ban_token
 
-    def unban_user(self, ban_token: str) -> None:
+    def unban_user(self, ban_token: str) -> bool:
         ban_key = self.BAN_TO_USER_KEY.format(ban_token)
         ban_metadata = self._r.hgetall(ban_key)
 
         if not ban_metadata:
-            return
+            return False
 
         user_key = self.USER_TO_BAN_KEY.format(ban_metadata["user_token"])
 
@@ -100,3 +100,5 @@ class BotState:
         pipe.delete(ban_key)
         pipe.delete(user_key)
         pipe.execute()
+
+        return True
