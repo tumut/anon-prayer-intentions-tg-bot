@@ -1,3 +1,4 @@
+from datetime import datetime
 import os
 from typing import Callable, TypeVar
 
@@ -136,8 +137,6 @@ async def handle_private_message(update: Update, context: ContextTypes.DEFAULT_T
     if message.text.startswith("/"):
         return
 
-    # TODO: verificar se usuário está banido
-
     pending_intention = context.user_data.get("pending_intention")
     if pending_intention is not None:
         await message.reply_text(
@@ -198,8 +197,6 @@ async def handle_confirmation_buttons(
 
     data = query.data
     intention = context.user_data.get("pending_intention")
-
-    # TODO: verificar se usuário está banido
 
     if intention is None:
         await query.edit_message_text("⚠️ Não há intenção pendente para enviar.")
@@ -482,6 +479,128 @@ async def ban(update: Update, context: ContextTypes.DEFAULT_TYPE):
     )
 
 
+async def unban(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if await is_inactive_group_and_notify(update, context):
+        return
+
+    if update.effective_chat is None or update.effective_message is None:
+        return
+
+    group_id = update.effective_chat.id
+    message_id = update.effective_message.id
+
+    if not context.args:
+        await context.bot.send_message(
+            chat_id=group_id, text="Forneça o código.", reply_to_message_id=message_id
+        )
+        return
+
+    ban_token = context.args[0]
+    response = None
+
+    if state.unban_user(ban_token):
+        response = "O usuário foi desbanido. Se possível, o avise, pois não guardo os ID's de usuários banidos e não tenho como notificá-lo."
+    else:
+        response = "Esse código não corresponde a nenhum usuário banido."
+
+    await context.bot.send_message(
+        chat_id=group_id,
+        text=response,
+        reply_to_message_id=message_id,
+    )
+
+
+def format_timestamp(timestamp: float) -> str:
+    return datetime.fromtimestamp(timestamp).strftime("%Y-%m-%dT%H:%M:%SZ")
+
+
+async def baninfo(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if update.effective_chat is None or update.effective_message is None:
+        return
+
+    reply_to_id = update.effective_message.id
+
+    if update.effective_chat.type in (Chat.GROUP, Chat.SUPERGROUP):
+        # We're in a group, so it should only be used by admins
+        if await is_inactive_group_and_notify(update, context):
+            return
+
+        group_id = update.effective_chat.id
+
+        if not context.args:
+            await context.bot.send_message(
+                group_id, "Forneça o código.", reply_to_message_id=reply_to_id
+            )
+            return
+
+        ban_token = context.args[0]
+        ban_info = state.get_ban_info_by_ban_token(ban_token)
+
+        response = None
+
+        if ban_info is None:
+            response = "Esse código não corresponde a nenhum usuário banido."
+        else:
+            timestamp = format_timestamp(float(ban_info["timestamp"]))
+            intention = ban_info["intention"]
+            reason = ban_info["reason"]
+
+            response = (
+                f"Quando: <code>{timestamp}</code>\n\n"
+                "Intenção:\n\n"
+                f"<pre>{intention}</pre>\n\n"
+                "Motivo:\n\n"
+                f"<pre>{reason}</pre>\n\n"
+                f"<code>{ban_token}</code>"
+            )
+
+        await context.bot.send_message(
+            group_id,
+            response,
+            parse_mode="HTML",
+            reply_to_message_id=reply_to_id,
+        )
+    else:
+        # Private messages
+        assert update.effective_user
+
+        user_id = update.effective_user.id
+        ban_token = state.get_ban_token_by_user(user_id)
+
+        if ban_token is None:
+            await context.bot.send_message(
+                user_id,
+                "Você não está banido. :)",
+                reply_to_message_id=reply_to_id,
+            )
+            return
+
+        ban_info = state.get_ban_info_by_ban_token(ban_token)
+        assert ban_info is not None
+
+        timestamp = format_timestamp(float(ban_info["timestamp"]))
+        intention = ban_info["intention"]
+        reason = ban_info["reason"]
+
+        description = (
+            f"Quando: <code>{timestamp}</code>\n\n"
+            "Intenção:\n\n"
+            f"<pre>{intention}</pre>\n\n"
+            "Motivo:\n\n"
+            f"<pre>{reason}</pre>\n\n"
+            "Apresente o código abaixo a um admin para contestar seu banimento. "
+            "De preferência, encaminhe essa mensagem.\n\n"
+            f"<code>{ban_token}</code>"
+        )
+
+        await context.bot.send_message(
+            user_id,
+            description,
+            parse_mode="HTML",
+            reply_to_message_id=reply_to_id,
+        )
+
+
 async def on_added_to_group(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if update.my_chat_member is None:
         return
@@ -553,6 +672,13 @@ def main():
 
     # Guard against: inactive group
     application.add_handler(CommandHandler("ban", ban))
+
+    # Guard against: inactive group
+    application.add_handler(CommandHandler("unban", unban))
+
+    # No guards if called in private messages
+    # In group, guard against: inactive group
+    application.add_handler(CommandHandler("baninfo", baninfo))
 
     # No guards
     application.add_handler(
