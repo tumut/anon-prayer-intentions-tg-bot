@@ -1,7 +1,7 @@
 import re
 
 RX_ANON = re.compile(r"\s*intenção anônima:\s*(.*)", re.I | re.S)
-RX_DASH = re.compile(r"\s*(.*\S)\s*-\s*(.*)", re.S)
+RX_DASH = re.compile(r"\s*(.+)\s-\s(.*)", re.S)
 RX_LABELED = re.compile(r"\s*nome:\s*(.*\S)\s*[\n]+intenção:(.*)", re.I | re.S)
 
 
