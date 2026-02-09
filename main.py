@@ -250,6 +250,12 @@ async def handle_confirmation_buttons(
                 ],
                 [
                     InlineKeyboardButton(
+                        "📢 Feedback",
+                        callback_data=f"admin_feedback:{query.message.chat.id}",
+                    ),
+                ],
+                [
+                    InlineKeyboardButton(
                         "ℹ️ Mais opções",
                         callback_data="admin_actions",
                     ),
@@ -344,19 +350,26 @@ async def handle_admin_buttons(update: Update, context: ContextTypes.DEFAULT_TYP
     ):
         return
 
-    await query.answer()
-
     if await is_inactive_group_and_notify(update, context):
+        await query.answer()
         return
 
     if not query.data.startswith("admin_"):
+        await query.answer()
         return
 
     if query.data == "admin_actions":
         await context.bot.send_message(
             query.message.chat_id, text=ADMIN_ACTIONS_MESSAGE, parse_mode="HTML"
         )
+        await query.answer()
         return
+
+    if query.data.startswith("admin_feedback"):
+        await query.answer(text="Use: /feedback mensagem", show_alert=False)
+        return
+
+    await query.answer()
 
     action, user_id_str = query.data.split(":", 1)
     intention = query.message.text
@@ -430,12 +443,13 @@ async def reject(update: Update, context: ContextTypes.DEFAULT_TYPE):
     admin_name = update.message.from_user.first_name
 
     await intention_msg.edit_text(
-        f"{intention}\n\n—\n\n❌ Intenção rejeitada por {admin_name}. Motivo: {reason}"
+        f"{intention}\n\n—\n\n❌ Intenção rejeitada por {admin_name}. Motivo: <i>{reason}</i>",
+        parse_mode="HTML",
     )
 
     await context.bot.send_message(
         chat_id=intention_sender_id,
-        text=f"<pre>{intention}</pre>\n\n❌ A intenção acima foi rejeitada.\n\nMotivo: {reason}",
+        text=f"<pre>{intention}</pre>\n\n❌ A intenção acima foi rejeitada.\n\nMotivo: <i>{reason}</i>",
         parse_mode="HTML",
     )
 
@@ -481,14 +495,14 @@ async def ban(update: Update, context: ContextTypes.DEFAULT_TYPE):
     _, ban_token = state.ban_user(intention_sender_id, reason, intention, admin_id)
 
     await intention_msg.edit_text(
-        f"{intention}\n\n—\n\n🔨 O remetente desta intenção foi banido por {admin_name}. Motivo: {reason}\n\n<code>{ban_token}</code>\n\n",
+        f"{intention}\n\n—\n\n🔨 O remetente desta intenção foi banido por {admin_name}. Motivo: <i>{reason}</i>\n\n<code>{ban_token}</code>\n\n",
         parse_mode="HTML",
     )
 
     ban_message = (
         f"<pre>{intention}</pre>\n\n"
         "🔨 Você foi banido por causa da intenção acima.\n\n"
-        f"Motivo: {reason}\n\n"
+        f"Motivo: <i>{reason}</i>\n\n"
         "Se quiser contestar esse banimento, fale com algum admin pessoalmente. "
         "Encaminhe para o admin esta mensagem, ele precisará do código abaixo para te desbanir.\n\n"
         f"<code>{ban_token}</code>"
@@ -539,6 +553,55 @@ async def unban(update: Update, context: ContextTypes.DEFAULT_TYPE):
         text=response,
         reply_to_message_id=message_id,
     )
+
+
+async def feedback(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if await is_inactive_group_and_notify(update, context):
+        return
+
+    if update.message is None:
+        return
+
+    if update.message.from_user is None:
+        return
+
+    if not context.args:
+        await update.message.reply_text(
+            "Você precisa escrever uma mensagem pro usuário."
+        )
+        return
+
+    if update.message.reply_to_message is None:
+        await update.message.reply_text(
+            "Você deve responder à mensagem com a intenção."
+        )
+        return
+
+    intention_msg = update.message.reply_to_message
+    intention_sender_id = retrieve_intention_sender_id(intention_msg)
+
+    if intention_sender_id is None or intention_msg.text is None:
+        await update.message.reply_text(
+            "Não posso fazer nada com a mensagem que você respondeu."
+        )
+        return
+
+    intention = intention_msg.text
+    feedback_text = " ".join(context.args)
+
+    ban_message = (
+        f"<pre>{intention}</pre>\n\n"
+        "📢 Um admin te enviou uma mensagem referente à intenção acima. Leia:\n\n"
+        f"<i>{feedback_text}</i>"
+    )
+
+    await context.bot.send_message(
+        chat_id=intention_sender_id,
+        text=ban_message,
+        parse_mode="HTML",
+    )
+
+    await update.message.reply_text("📨 Mensagem enviada!")
 
 
 def format_timestamp(timestamp: float) -> str:
@@ -715,6 +778,9 @@ def main():
 
     # Guard against: inactive group
     application.add_handler(CommandHandler("unban", unban))
+
+    # Guard against: inactive group
+    application.add_handler(CommandHandler("feedback", feedback))
 
     # No guards if called in private messages
     # In group, guard against: inactive group

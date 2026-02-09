@@ -56,8 +56,9 @@ READY_MESSAGE = (
 
 ADMIN_ACTIONS_MESSAGE = (
     "Para outras ações além de aprovar, responda à mensagem da intenção com um dos seguintes comandos:\n\n"
-    "/reject <code>motivo</code>\n"
-    "/ban <code>motivo</code>\n"
+    "/feedback <code>mensagem</code>: envia uma mensagem para o remetente da intenção.\n\n"
+    "/reject <code>motivo</code>: rejeita a intenção.\n\n"
+    "/ban <code>motivo</code>: bane o remetente da intenção."
 )
 
 NEW_INTENTION_KEYBOARD = InlineKeyboardMarkup(
