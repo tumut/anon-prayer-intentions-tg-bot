@@ -250,6 +250,12 @@ async def handle_confirmation_buttons(
                 ],
                 [
                     InlineKeyboardButton(
+                        "📢 Feedback",
+                        callback_data=f"admin_feedback:{query.message.chat.id}",
+                    ),
+                ],
+                [
+                    InlineKeyboardButton(
                         "ℹ️ Mais opções",
                         callback_data="admin_actions",
                     ),
@@ -344,19 +350,26 @@ async def handle_admin_buttons(update: Update, context: ContextTypes.DEFAULT_TYP
     ):
         return
 
-    await query.answer()
-
     if await is_inactive_group_and_notify(update, context):
+        await query.answer()
         return
 
     if not query.data.startswith("admin_"):
+        await query.answer()
         return
 
     if query.data == "admin_actions":
         await context.bot.send_message(
             query.message.chat_id, text=ADMIN_ACTIONS_MESSAGE, parse_mode="HTML"
         )
+        await query.answer()
         return
+
+    if query.data.startswith("admin_feedback"):
+        await query.answer(text="Use: /feedback mensagem", show_alert=False)
+        return
+
+    await query.answer()
 
     action, user_id_str = query.data.split(":", 1)
     intention = query.message.text
@@ -542,6 +555,55 @@ async def unban(update: Update, context: ContextTypes.DEFAULT_TYPE):
     )
 
 
+async def feedback(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if await is_inactive_group_and_notify(update, context):
+        return
+
+    if update.message is None:
+        return
+
+    if update.message.from_user is None:
+        return
+
+    if not context.args:
+        await update.message.reply_text(
+            "Você precisa escrever uma mensagem pro usuário."
+        )
+        return
+
+    if update.message.reply_to_message is None:
+        await update.message.reply_text(
+            "Você deve responder à mensagem com a intenção."
+        )
+        return
+
+    intention_msg = update.message.reply_to_message
+    intention_sender_id = retrieve_intention_sender_id(intention_msg)
+
+    if intention_sender_id is None or intention_msg.text is None:
+        await update.message.reply_text(
+            "Não posso fazer nada com a mensagem que você respondeu."
+        )
+        return
+
+    intention = intention_msg.text
+    feedback_text = " ".join(context.args)
+
+    ban_message = (
+        f"<pre>{intention}</pre>\n\n"
+        "📢 Um admin te enviou uma mensagem referente à intenção acima. Leia:\n\n"
+        f"<i>{feedback_text}</i>"
+    )
+
+    await context.bot.send_message(
+        chat_id=intention_sender_id,
+        text=ban_message,
+        parse_mode="HTML",
+    )
+
+    await update.message.reply_text("📨 Mensagem enviada!")
+
+
 def format_timestamp(timestamp: float) -> str:
     return datetime.fromtimestamp(timestamp, tz=timezone.utc).strftime(
         "%Y-%m-%dT%H:%M:%SZ"
@@ -716,6 +778,9 @@ def main():
 
     # Guard against: inactive group
     application.add_handler(CommandHandler("unban", unban))
+
+    # Guard against: inactive group
+    application.add_handler(CommandHandler("feedback", feedback))
 
     # No guards if called in private messages
     # In group, guard against: inactive group
