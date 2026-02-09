@@ -430,12 +430,13 @@ async def reject(update: Update, context: ContextTypes.DEFAULT_TYPE):
     admin_name = update.message.from_user.first_name
 
     await intention_msg.edit_text(
-        f"{intention}\n\n—\n\n❌ Intenção rejeitada por {admin_name}. Motivo: {reason}"
+        f"{intention}\n\n—\n\n❌ Intenção rejeitada por {admin_name}. Motivo: <i>{reason}</i>",
+        parse_mode="HTML",
     )
 
     await context.bot.send_message(
         chat_id=intention_sender_id,
-        text=f"<pre>{intention}</pre>\n\n❌ A intenção acima foi rejeitada.\n\nMotivo: {reason}",
+        text=f"<pre>{intention}</pre>\n\n❌ A intenção acima foi rejeitada.\n\nMotivo: <i>{reason}</i>",
         parse_mode="HTML",
     )
 
@@ -481,14 +482,14 @@ async def ban(update: Update, context: ContextTypes.DEFAULT_TYPE):
     _, ban_token = state.ban_user(intention_sender_id, reason, intention, admin_id)
 
     await intention_msg.edit_text(
-        f"{intention}\n\n—\n\n🔨 O remetente desta intenção foi banido por {admin_name}. Motivo: {reason}\n\n<code>{ban_token}</code>\n\n",
+        f"{intention}\n\n—\n\n🔨 O remetente desta intenção foi banido por {admin_name}. Motivo: <i>{reason}</i>\n\n<code>{ban_token}</code>\n\n",
         parse_mode="HTML",
     )
 
     ban_message = (
         f"<pre>{intention}</pre>\n\n"
         "🔨 Você foi banido por causa da intenção acima.\n\n"
-        f"Motivo: {reason}\n\n"
+        f"Motivo: <i>{reason}</i>\n\n"
         "Se quiser contestar esse banimento, fale com algum admin pessoalmente. "
         "Encaminhe para o admin esta mensagem, ele precisará do código abaixo para te desbanir.\n\n"
         f"<code>{ban_token}</code>"
