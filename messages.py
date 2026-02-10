@@ -102,3 +102,16 @@ def get_admin_keyboard(user_id: int):
             ],
         ]
     )
+
+
+def get_finalized_intention_keyboard(user_id: int):
+    return InlineKeyboardMarkup(
+        [
+            [
+                InlineKeyboardButton(
+                    "📢 Feedback",
+                    callback_data=f"admin_feedback:{user_id}",
+                ),
+            ],
+        ]
+    )
