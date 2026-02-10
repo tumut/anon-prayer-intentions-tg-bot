@@ -21,6 +21,7 @@ from messages import (
     NEW_INTENTION_KEYBOARD,
     READY_MESSAGE,
     RULES_AND_INSTRUCTIONS_MESSAGES,
+    get_admin_keyboard,
     get_instructions_keyboard,
 )
 from regexes import parse_anon_intention, parse_named_intention
@@ -240,31 +241,10 @@ async def handle_confirmation_buttons(
             )
             return
 
-        admin_keyboard = InlineKeyboardMarkup(
-            [
-                [
-                    InlineKeyboardButton(
-                        "✅ Aceitar",
-                        callback_data=f"admin_accept:{query.message.chat.id}",
-                    ),
-                ],
-                [
-                    InlineKeyboardButton(
-                        "📢 Feedback",
-                        callback_data=f"admin_feedback:{query.message.chat.id}",
-                    ),
-                ],
-                [
-                    InlineKeyboardButton(
-                        "ℹ️ Mais opções",
-                        callback_data="admin_actions",
-                    ),
-                ],
-            ]
-        )
-
         await context.bot.send_message(
-            chat_id=outbox_chat_id, text=intention, reply_markup=admin_keyboard
+            chat_id=outbox_chat_id,
+            text=intention,
+            reply_markup=get_admin_keyboard(query.message.chat.id),
         )
         context.user_data.pop("pending_intention", None)
 
