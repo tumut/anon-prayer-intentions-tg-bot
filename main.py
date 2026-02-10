@@ -21,6 +21,8 @@ from messages import (
     NEW_INTENTION_KEYBOARD,
     READY_MESSAGE,
     RULES_AND_INSTRUCTIONS_MESSAGES,
+    get_admin_keyboard,
+    get_finalized_intention_keyboard,
     get_instructions_keyboard,
 )
 from regexes import parse_anon_intention, parse_named_intention
@@ -240,31 +242,10 @@ async def handle_confirmation_buttons(
             )
             return
 
-        admin_keyboard = InlineKeyboardMarkup(
-            [
-                [
-                    InlineKeyboardButton(
-                        "✅ Aceitar",
-                        callback_data=f"admin_accept:{query.message.chat.id}",
-                    ),
-                ],
-                [
-                    InlineKeyboardButton(
-                        "📢 Feedback",
-                        callback_data=f"admin_feedback:{query.message.chat.id}",
-                    ),
-                ],
-                [
-                    InlineKeyboardButton(
-                        "ℹ️ Mais opções",
-                        callback_data="admin_actions",
-                    ),
-                ],
-            ]
-        )
-
         await context.bot.send_message(
-            chat_id=outbox_chat_id, text=intention, reply_markup=admin_keyboard
+            chat_id=outbox_chat_id,
+            text=intention,
+            reply_markup=get_admin_keyboard(query.message.chat.id),
         )
         context.user_data.pop("pending_intention", None)
 
@@ -390,19 +371,26 @@ async def handle_admin_buttons(update: Update, context: ContextTypes.DEFAULT_TYP
             parse_mode="HTML",
         )
 
-        await query.edit_message_reply_markup(None)
+        await query.edit_message_reply_markup(get_finalized_intention_keyboard(user_id))
         await query.message.reply_text(
             f"✅ Intenção aceita por {query.from_user.first_name}.\n\n"
             "(Vocês precisarão copiar e colar as intenções enquanto o bot ainda não for vinculado ao canal.)"
         )
 
 
-def retrieve_intention_sender_id(intention_msg: Message) -> int | None:
+def retrieve_intention_sender_id(
+    intention_msg: Message, allow_finalized=False
+) -> int | None:
     if intention_msg.reply_markup is not None:
         for row in intention_msg.reply_markup.inline_keyboard:
             for button in row:
-                if isinstance(button.callback_data, str):
-                    return int(button.callback_data.split(":", 1)[1])
+                if (
+                    isinstance(button.callback_data, str)
+                    and ":" in button.callback_data
+                ):
+                    command, sender_id = button.callback_data.split(":", 1)
+                    if command != "admin_feedback" or allow_finalized:
+                        return int(sender_id)
                 break
             break
 
@@ -434,7 +422,7 @@ async def reject(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     if intention_sender_id is None or intention_msg.text is None:
         await update.message.reply_text(
-            "Não posso fazer nada com a mensagem que você respondeu."
+            "Não posso fazer isso com a mensagem que você respondeu."
         )
         return
 
@@ -444,6 +432,7 @@ async def reject(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     await intention_msg.edit_text(
         f"{intention}\n\n—\n\n❌ Intenção rejeitada por {admin_name}. Motivo: <i>{reason}</i>",
+        reply_markup=get_finalized_intention_keyboard(intention_sender_id),
         parse_mode="HTML",
     )
 
@@ -483,7 +472,7 @@ async def ban(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     if intention_sender_id is None or intention_msg.text is None:
         await update.message.reply_text(
-            "Não posso fazer nada com a mensagem que você respondeu."
+            "Não posso fazer isso com a mensagem que você respondeu."
         )
         return
 
@@ -496,6 +485,7 @@ async def ban(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     await intention_msg.edit_text(
         f"{intention}\n\n—\n\n🔨 O remetente desta intenção foi banido por {admin_name}. Motivo: <i>{reason}</i>\n\n<code>{ban_token}</code>\n\n",
+        reply_markup=get_finalized_intention_keyboard(intention_sender_id),
         parse_mode="HTML",
     )
 
@@ -578,11 +568,13 @@ async def feedback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
 
     intention_msg = update.message.reply_to_message
-    intention_sender_id = retrieve_intention_sender_id(intention_msg)
+    intention_sender_id = retrieve_intention_sender_id(
+        intention_msg, allow_finalized=True
+    )
 
     if intention_sender_id is None or intention_msg.text is None:
         await update.message.reply_text(
-            "Não posso fazer nada com a mensagem que você respondeu."
+            "Não posso fazer isso com a mensagem que você respondeu."
         )
         return
 

@@ -77,3 +77,41 @@ def get_instructions_keyboard(newbie: bool = False):
             ]
         ]
     )
+
+
+def get_admin_keyboard(user_id: int):
+    return InlineKeyboardMarkup(
+        [
+            [
+                InlineKeyboardButton(
+                    "✅ Aceitar",
+                    callback_data=f"admin_accept:{user_id}",
+                ),
+            ],
+            [
+                InlineKeyboardButton(
+                    "📢 Feedback",
+                    callback_data=f"admin_feedback:{user_id}",
+                ),
+            ],
+            [
+                InlineKeyboardButton(
+                    "ℹ️ Mais opções",
+                    callback_data="admin_actions",
+                ),
+            ],
+        ]
+    )
+
+
+def get_finalized_intention_keyboard(user_id: int):
+    return InlineKeyboardMarkup(
+        [
+            [
+                InlineKeyboardButton(
+                    "📢 Feedback",
+                    callback_data=f"admin_feedback:{user_id}",
+                ),
+            ],
+        ]
+    )
