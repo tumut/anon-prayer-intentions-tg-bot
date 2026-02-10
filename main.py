@@ -414,7 +414,7 @@ async def reject(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     if intention_sender_id is None or intention_msg.text is None:
         await update.message.reply_text(
-            "Não posso fazer nada com a mensagem que você respondeu."
+            "Não posso fazer isso com a mensagem que você respondeu."
         )
         return
 
@@ -463,7 +463,7 @@ async def ban(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     if intention_sender_id is None or intention_msg.text is None:
         await update.message.reply_text(
-            "Não posso fazer nada com a mensagem que você respondeu."
+            "Não posso fazer isso com a mensagem que você respondeu."
         )
         return
 
@@ -562,7 +562,7 @@ async def feedback(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     if intention_sender_id is None or intention_msg.text is None:
         await update.message.reply_text(
-            "Não posso fazer nada com a mensagem que você respondeu."
+            "Não posso fazer isso com a mensagem que você respondeu."
         )
         return
 
