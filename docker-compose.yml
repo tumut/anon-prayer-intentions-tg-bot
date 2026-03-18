@@ -6,12 +6,22 @@ services:
     depends_on:
       - redis
     restart: unless-stopped
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "14"
 
   redis:
     image: redis:7.4-alpine
     restart: unless-stopped
     volumes:
       - redis_data:/data
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "5m"
+        max-file: "10"
 
 volumes:
   redis_data:
